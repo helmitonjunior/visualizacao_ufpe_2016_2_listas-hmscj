@@ -1,0 +1,23 @@
+É obvio notar que o plot inicial do chart precisa de melhorias.
+Inicialmente podemos enumerar os seguintes problemas:
+- Excesso de dados plotados em relação ao espaço do chart
+- Tamanho e formato das representações dos dados tornam a leitura difícil
+- Falta de formatação do plotting, fazendo com que elementos ultrapassem o espaço delimitado
+
+Uma das formas mais simples de se lidar com estes problemas é manipular o nosso espaço. Isso não necessariamente significa alterar o tamanho do nosso svg canvas (900x500), podemos melhorar a proporção visual ajustando a escala utilizada no plotting, como feita no código:
+
+var xScale = d3.scaleLinear()
+        .domain([0, d3.max(dataset, function(d) { return d[0]; })/4])
+        .range([34, width]);
+
+Note dois detalhes:
+1) Dividimos a parametrização final do nosso domínio por 4, nos permitindo assim aplicar um 'zoom in' na nossa renderização, dando uma visão mais confortável dos dados exibidos.
+2) Também setamos a limitação inicial como valor 34, que equivale aos 24 bits ocupado pelo eixo desenhado no início do canvas, mais 10 pixels para tomar em consideração o tamanho do raio dos círculos.
+É bom lembrar que estas alterações devem ser feitas de forma equivalente para o eixo Y, e também será necessário realizar um novo cálculo de escala especificamente para os eixos do scatterplot (no nosso caso, xAxisScale e yAxisScale).
+
+Podemos ser um pouco mais criativos e alterar a forma como próprios dados são representados. No nosso código em particular, podemos ver que usar um raio relativamente menor (de 10 para 7) já é de certa forma efetivo, porém podemos ir além. Para facilitar a visualiação de sobreposição de elementos, nosso código torna os círculos parcialmente translúcidos; o que nos permite identificar com mais clareza pontos de aglomeração e a distribuição geral dos dados no chart pela variação da intensidade da cor.
+Com uma visualização sem zoom-in (ou seja, não realizando a divisão por 4 na xScale e yScale), é fácil agora perceber uma aglomeração linear nos dados apresentados, algo que anteriormente era extremamente difícil de se inferir (talvez impossível). Dessa forma podemos melhorar a capacidade de leitura dos nossos dados sem alterar ou esconder qualquer uma de suas instâncias.
+
+
+Nota ao professor sobre a implementação da Q3.2:
+Professor, devido ao tamanho do dataset, a execução do código pode ficar lenta em alguns browsers. Isso por si só não é um problema, porém essa lentidão pode ocorrer no momento da seleção de pontos do dataset para mudança de cor. Se o botão do mouse for liberado durante um possível lag do browser, o código não vai identificar a soltura do botão do mouse e a função mouseup não será executada, acarretando numa espécie de bug que não está relacionado ao código em si, mas sim à sensibilidade do browser. Experimentei isso algumas vezes com o firefox e achei interessante que o senhor tomasse nota.
