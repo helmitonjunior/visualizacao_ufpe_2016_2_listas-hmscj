@@ -268,10 +268,10 @@ function init(){
 	    if( !s.empty()) {
 	        var p = d3.mouse(this),
 	            d = {
-	                x       : parseInt( s.attr("x"), 10),
-	                y       : parseInt( s.attr("y"), 10),
-	                width   : parseInt( s.attr("width"), 10),
-	                height  : parseInt( s.attr("height"), 10)
+	                x       : parseFloat( s.attr("x"), 10),
+	                y       : parseFloat( s.attr("y"), 10),
+	                width   : parseFloat( s.attr("width"), 10),
+	                height  : parseFloat( s.attr("height"), 10)
 	            };
 
 	            p[0] = p[0]-margin.left;

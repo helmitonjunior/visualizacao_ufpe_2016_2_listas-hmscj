@@ -12,7 +12,6 @@ var xOffset = 0,
 	state = "idle"
 	scaleFactor = 1.0;
 
-
 var svg2;
 var svg3;
 
@@ -24,7 +23,15 @@ var selecting=1;
 var projection;
 var move;
 
+var bigscale = d3.scaleLinear()
+	.domain([0, 660])   // Data space
+	.range([0, 250]); // Pixel space	
+var scalerect = d3.scaleLinear()
+	.domain([0, 200])   // Data space
+	.range([0, 80]); // Pixel space
 
+
+var filterMonth = Array(10);
 
 var prot={
 acidentes: [],
@@ -32,9 +39,17 @@ total: 0,
 motocicletas: 0,
 ciclistas: 0,
 pedestres:0,
-ciclomotores:0,
+colisoes:0,
 automoveis:0,
 };
+
+	var tipos = [
+	    'Motocicletas',
+	    'Ciclistas',
+	    'Pedestres',
+	    'Colisões',
+	    'Automóveis e outros'
+	];
 
 var meses = [];
 
@@ -47,138 +62,63 @@ var scalev3 = d3.scaleLinear()
 .domain([0, 120])   // Data space
 .range([0, 100]); // Pixel space
 
-	var tipos = [
-	    'Motocicletas',
-	    'Ciclomotores',
-	    'Ciclistas',
-	    'Pedestres',
-	    'Automóveis e outros'
-	];
+
 
 	var tipomap = {
-	    'Cicliestas': {
-	    	color: "gray",
+	    'red': {
 	    	filter: true,
 	    	pontos:[] ,
 	    	selecao:[],
 	    },
-	    'Pedestre': {
-	    	color: "gray",
+	    'yellow': {
 	    	filter: true,
 	    	pontos:[] ,
 	    	selecao:[],
 	    },
-	    'Motocicleta': {
-	    	color: "gray",
+	    'blue': {
 	    	filter: true,
 	    	pontos:[] ,
 	    	selecao:[],
 	    },
-	    'Outros': {
-	    	color: "gray",
+	    'green': {
 	    	filter: true,
 	    	pontos:[] ,
 	    	selecao:[],
 	    },
-	    'Automóveis': {
-	    	color: "gray",
+	    'purple': {
 	    	filter: true,
 	    	pontos:[] ,
 	    	selecao:[],
-	    },
-	    'Ciclistas e Pedestres': {
-	    	color: "gray",
-	    	filter: true,
-	    	pontos:[] ,
-	    	selecao:[],
-	    },
-	    'Pedestres e ciclista': {
-	    	color: "gray",
-	    	filter: true,
-	    	pontos:[] ,
-	    	selecao:[],
-	    },
-	    'Motos e Ciclomotores': {
-	    	color: "gray",
-	    	filter: true,
-	    	pontos:[] ,
-	    	selecao:[],
-	    },
-	    'Atropelamentos': {
-	    	color: "gray",
-	    	filter: true,
-	    	pontos:[] ,
-	    	selecao:[],
-	    },
-	    'Ciclistas e pedestre': {
-	    	color: "gray",
-	    	filter: true,
-	    	pontos:[] ,
-	    	selecao:[],
-	    },
-	    'Colisões': {
-	    	color: "gray",
-	    	filter: true,
-	    	pontos:[] ,
-	    	selecao:[],
-	    },
-	    'Motocicletas': {
-	    	color: "gray",
-	    	filter: true,
-	    	pontos:[] ,
-	    	selecao:[],
-	    },
-	    'Moto e Ciclomotor': {
-	    	color: "gray",
-	    	filter: true,
-	    	pontos:[] ,
-	    	selecao:[],
-	    },
-	    'Ciclomotores': {
-	    	color: "red",
-	    	filter: true,
-	    	pontos:[] ,
-	    	selecao:[],
-	    },
-	    'Ciclistas': {
-	    	color: "blue",
-	    	filter: true,
-	    	pontos:[] ,
-	    	selecao:[],
-	    },
-	    'Pedestres': {
-	    	color: "green",
-	    	filter: true,
-	    	pontos:[] ,
-	    	selecao:[],
-	    },
-	    'Automóveis e outros': {
-	    	color: "yellow",
-	    	filter: true,
-	    	pontos:[] ,
-	    	selecao:[],
-	    },
+		}
 	};
 
 
 function color(tipo){
-	if (tipo == 'Automóveis e outros'){
+	if (tipo == 'Automóveis e outros' || tipo == 'Automóveis'
+	 || tipo == 'Outros' || tipo == 'automoveis'){
 		return "yellow";
 	}
-	else if (tipo == 'Pedestres'){
+	else if (tipo == 'Pedestres' || tipo == 'Atropelamentos'
+		|| tipo == 'Pedestre' || tipo == 'pedestres'){
 		return "green";
 	}
-	else if (tipo == 'Ciclistas'){
-		return "blue";
-	}
-	else if (tipo == 'Ciclomotores'){
+	else if (tipo == 'Ciclistas' || tipo ==  'Cicliestas' ||
+	  tipo ==  'Pedestres e ciclista' || tipo ==  'Ciclistas e pedestre' ||
+	  tipo ==  'Ciclistas e Pedestres' || tipo === 'ciclistas'){
 		return "red";
 	}
-	else if (tipo == 'Motocicletas'){
-		return "gray";
-	} else {
-		return "rgba(100,10,20,0.1)"
+	else if (tipo == 'Colisões' || tipo == 'colisoes'){
+		return "blue";
 	}
+	else if (tipo == 'Motocicletas' || tipo == 'Motocicleta' ||
+	 tipo == 'Moto e Ciclomotor' || tipo == 'Motos e Ciclomotores'
+	 || tipo == 'Ciclomotores' || tipo == 'motocicletas'){
+		return "purple";
+	} else {
+		return "gray" //unexpected type
+	}
+
+
 }
 
 function updateDataset(render){
@@ -192,22 +132,22 @@ function updateDataset(render){
 			acidentes.features.forEach(function(d){	
 				var m = parseInt(d.properties.data.substring(3,5));
 				if (m-3 >= 0 && m-3 < 10){
-					meses[m-3].acidentes.push(d);
+					meses[m-3].acidentes.push(Object.assign({},d));
 					meses[m-3].total++;
-					switch (d.properties.tipo){
-						  case 'Motocicletas':
+					switch (color(d.properties.tipo)){
+						  case 'purple':
 						    meses[m-3].motocicletas++;
 						    break;
-						  case 'Ciclomotores':
-						    meses[m-3].ciclomotores++;
+						  case 'blue':
+						    meses[m-3].colisoes++;
 						    break;
-						  case 'Ciclistas':
+						  case 'red':
 						    meses[m-3].ciclistas++;
 						    break;
-						  case 'Pedestres':
+						  case 'green':
 						    meses[m-3].pedestres++;
 						    break;
-						  case 'Automóveis e outros':
+						  case 'yellow':
 						    meses[m-3].automoveis++;
 						    break;
 						  default:
@@ -225,7 +165,7 @@ function updateDataset(render){
 			])
 			.range([0, height-20]);
 			
-
+			filterMonth.fill(1);
 			render();
 		});
 	});
@@ -328,11 +268,11 @@ function renderDataset(){
 	.exit()
 	.remove();
     
-	tipomap['Automóveis e outros'].pontos = [];
-	tipomap['Ciclomotores'].pontos = [];
-	tipomap['Ciclistas'].pontos = [];
-	tipomap['Motocicletas'].pontos = [];
-	tipomap['Pedestres'].pontos = [];
+	tipomap['red'].pontos = [];
+	tipomap['blue'].pontos = [];
+	tipomap['green'].pontos = [];
+	tipomap['yellow'].pontos = [];
+	tipomap['purple'].pontos = [];
 
 
 
@@ -350,7 +290,7 @@ function renderDataset(){
 	    return 3;
 	})
 	.attr("fill", function(d){
-	    return "rgba(0,0,225, 0.5)";
+	    return "rgba(0,150,225, 0.5)";
 	});
 
     //
@@ -370,7 +310,7 @@ function renderDataset(){
 
 
 	d3.selectAll("circle").each(function(d) {
-		tipomap[d.properties.tipo].pontos.push(d);
+		tipomap[color(d.properties.tipo)].pontos.push(d);
 	});
 
 	var pos = 0;
@@ -378,52 +318,119 @@ function renderDataset(){
     		.domain([0, 150])   // Data space
 	    	.range([0, 200]); // Pixel space
 	
-	svg3.selectAll("rect").remove();
+	//svg3.selectAll("rect").remove();
 
-	var v = svg3.selectAll("rect").data(meses);
+	var bars = svg3
+	.selectAll("g")
+	.data(meses)
+	.enter()
+	.append("g");
+	// 
+	bars
+	.each(function(mes, mesIndex){
 
-	v.enter()
-	.append("rect")
-		.attr("x", function(){
-		   	pos += 40;
-		   	return pos;
+		var rects = Object.keys(mes).filter(function(item){
+			return item != 'total' && item != 'acidentes';
+		}).map(function(item){
+			return {
+				value: mes[item],
+				tipo: item
+			};
 		})
-		.attr("y", function(d){
-			return height - yinvert(d.total)
+		.sort(function(prev, curr){
+		 	return prev.tipo.localeCompare(curr.tipo);
+		});
+
+		var values = rects.map(function(d){return d.value});
+
+		rects = rects.map(function(rect, i){
+			var range = values.slice(0,i+1);
+
+			rect.offset = (!range.length) ? 0 : range.reduce(function(prev, cur){
+				return prev+cur;
+			});
+
+			return rect;
+		});
+
+		var acidentescale = d3.scaleLinear()
+		.range([0, 1])
+		.domain([
+			0,
+			mes.total
+		]);
+
+
+
+		d3.select(this)
+		.selectAll("rect")
+		.data(rects)
+		.enter()
+		.append("rect")
+		.attr("x", function(d, i){
+          	return ((mesIndex+1)*40)+3;
+		})
+		.attr("y", function(d, i){
+			return height - yinvert(d.offset);
 		})
 		.attr("width",  40)
 		.attr("height", function(d){
-	       	return yinvert(d.total);
+	       	return parseFloat(acidentescale(d.value) * yinvert(mes.total));
 		})
-		.attr("fill", "white")
-		.attr("stroke", "black");
+		.attr("fill", function(d){
+			return color(d.tipo);
+		});
+	});
 
-		pos = 5;      
-		var mes= -1;
-		var mapmes= ['Mar', 'Abr', 'Mai', 'Jun',
-		'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-	    svg3.selectAll("text").remove();
-		var q = svg3.selectAll("text").data(meses);
-		q.enter()
-		 .append("text")
-	          .attr("x", function(){
-	          	pos += 40;
-	          	return pos;
-	          })
-	          .attr("y", function(d){
-	          	return (height - yinvert(d.total))-5
-	      	   })
-	          .text(function(d){
-	          	mes +=1;
-	          	return mapmes[mes];
-	      	   });
-
+	pos = 5;
+	var mes= -1;
+	var mapmes= ['Mar', 'Abr', 'Mai', 'Jun',
+	'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    svg3.selectAll("text").remove();
+	var q = svg3.selectAll("text").data(meses);
+	q.enter()
+	 .append("text")
+          .attr("x", function(){
+            pos += 41;
+            return pos;
+          })
+          .attr("y", function(d){
+            return (height - yinvert(d.total))-5
+           })
+          .on("click", function(d, i){	
+			if (filterMonth[i] == 1){
+		        filterMonth[i] = 0;
+		    } else {
+		       	filterMonth[i] = 1;
+		     }
+		     var c = d3.select("svg").selectAll("circle");
+		    		c.attr("fill", function(d){  
+		    			tipo = color(d.properties.tipo);
+		    			var m = parseInt(d.properties.data.substring(3,5));
+		    			if (filterMonth[m-3] == 0){
+		    				return "rgba(0,0,0,0.05)";	
+		    			}
+		    			if (tipomap[tipo].filter){	
+		    				if  (d.properties.select && check){						
+								return color(d);
+							} else if  (d.properties.select && !check){						
+								return "rgba(0,150,255,0.5)";
+							} else {
+								return "rgba(0,150,255,0.5)";
+							}	
+						
+						} else {
+							return "rgba(0,0,0,0.05)";										
+						}	
+					});
+		    })
+          .text(function(d){
+            mes +=1;
+            return mapmes[mes];
+           });
 
 	if (selected == 0){
 	    	pos = 0;
-			var scale = d3.scaleLinear()
-    		.domain([0, 120])   // Data space
-	    	.range([0, 200]); // Pixel space
 			svg2.selectAll("rect").remove();
 			var s = svg2.selectAll("rect").data(tipos);
 			s.enter()
@@ -435,30 +442,39 @@ function renderDataset(){
 		          .attr("y", 0)
 		          .attr("width",  40)
 		          .attr("height", function(d){
-		          	return tipomap[d].pontos.length;
+		          		var target = color(d);
+		          		if (tipomap[target].pontos.length > 200){
+		          			return bigscale(tipomap[color(d)].pontos.length);
+		          	}
+		          	return scalerect(tipomap[color(d)].pontos.length);
 		      	   })
 		          .attr("fill",function(d){
 		          	if (check){
-		          		return tipomap[d].color
+		          		return color(d)
 		          	}else {
-		          		return "rgba(0,0,0,0.05)"
+		          		return "rgba(0,0,0,0.1)"
 		          	}
 				})
 		        .on("click", function(d){		          	
-		          	if (tipomap[d].filter){ 
-		          		tipomap[d].filter = false;
+		          	if (tipomap[target].filter){ 
+		          		tipomap[target].filter = false;
 		          	} else {
-		          		tipomap[d].filter = true;
+		          		tipomap[target].filter = true;
 		          	}
 		          	var c = d3.select("svg").selectAll("circle");
 		    		c.attr("fill", function(d){  
-		    			tipo = d.properties.tipo;
-		    			
-		    			if (tipomap[tipo].filter){		
-		    				if  (d.properties.select){						
-								return color(tipo);
+		    			tipo = color(d.properties.tipo);
+		    			var m = parseInt(d.properties.data.substring(3,5));
+		    			if (filterMonth[m-3] == 0){
+		    				return "rgba(0,0,0,0.05)";	
+		    			}
+		    			if (tipomap[tipo].filter){	
+		    				if  (d.properties.select && check){						
+								return color(d);
+							} else if  (d.properties.select && !check){						
+								return "rgba(0,150,255,0.5)";
 							} else {
-								return "rgba(0,0,255,0.5)";
+								return "rgba(0,150,255,0.5)";
 							}	
 						
 						} else {
@@ -468,8 +484,7 @@ function renderDataset(){
 		          	renderDataset();
 		        });
 
-
-		    pos = 0;      
+		    pos = 2;      
 		    svg2.selectAll("text").remove();
 			var t = svg2.selectAll("text").data(tipos);
 			t.enter()
@@ -479,10 +494,26 @@ function renderDataset(){
 		          	return pos;
 		          })
 		          .attr("y", function(d){
-		          	return tipomap[d].pontos.length+15;
+		          	var target = color(d);
+		          	if (tipomap[target].selecao.length > 200){
+		          		return bigscale(tipomap[target].selecao.length)+15;
+		          	} else if (selected == 0){
+		          		var y = tipomap[target].pontos.length;
+		         		if (y > 200){
+		         			return bigscale(y)+15;
+		         		} else {
+		          			return scalerect(y)+15;
+		          		}
+		          	} else {
+		          		return tipomap[target].selecao.length+10;
+		      	   	}
 		      	   })
 		          .text(function(d){
-		          	return tipomap[d].pontos.length;
+		          	if (selected == 0){
+		          		return tipomap[color(d)].pontos.length;
+		          	} else{
+		          		return tipomap[color(d)].selecao.length;
+		      	   	}
 		      	   });
         }
 }
@@ -493,15 +524,18 @@ function init(){
 		check = this.checked;
 		var c = d3.select("svg").selectAll("circle");
 		c.attr("fill", function(d){  
-			tipo = d.properties.tipo;
-
+			tipo = color(d.properties.tipo);
+			var m = parseInt(d.properties.data.substring(3,5));
+		    if (filterMonth[m-3] == 0){
+		    	return "rgba(0,0,0,0.05)";	
+		    }
 			if (tipomap[tipo].filter){
 				if  (d.properties.select && check){
-					return color(tipo);
+					return tipo;
 				} else if (d.properties.select && !check) {
 					return "rgba(255,0,0,0.5)"
 				}else {
-					return "rgba(0,0,255,0.5)"
+					return "rgba(0,150,255,0.5)"
 				}	
 			} else {
 				return "rgba(0,0,0,0.05)"										
@@ -515,9 +549,10 @@ function init(){
 			});
 		} else {
 			s.attr("fill", function(d){
-				return "rgba(0,0,0,0.05)"
+				return "rgba(0,0,0,0.1)"
 			});
 		}
+
 		renderDataset();
 	});
 
@@ -590,10 +625,10 @@ function init(){
 	    if( !s.empty()) {
 	        var p = d3.mouse(this),
 	            d = {
-	                x       : parseInt( s.attr("x"), 10),
-	                y       : parseInt( s.attr("y"), 10),
-	                width   : parseInt( s.attr("width"), 10),
-	                height  : parseInt( s.attr("height"), 10)
+	                x       : parseFloat( s.attr("x"), 10),
+	                y       : parseFloat( s.attr("y"), 10),
+	                width   : parseFloat( s.attr("width"), 10),
+	                height  : parseFloat( s.attr("height"), 10)
 	            };
 
 	            p[0] = p[0]-margin.left;
@@ -630,11 +665,11 @@ function init(){
 		d3.event.preventDefault();
 		if (selecting == 0) {
 	    	if (state == "select"){
-				tipomap['Automóveis e outros'].selecao = [];
-				tipomap['Ciclomotores'].selecao = [];
-				tipomap['Ciclistas'].selecao = [];
-				tipomap['Motocicletas'].selecao = [];
-				tipomap['Pedestres'].selecao = [];
+				tipomap['red'].selecao = [];
+				tipomap['yellow'].selecao = [];
+				tipomap['green'].selecao = [];
+				tipomap['purple'].selecao = [];
+				tipomap['blue'].selecao = [];
 		    	
 		    	selected =0;
 		    	var s = svg.select("rect.selection");
@@ -657,7 +692,7 @@ function init(){
 					var sh = parseInt( s.attr("height"), 10);
 					var okX = false;
 					var okY = false;
-					tipo = d.properties.tipo;
+					tipo = color(d.properties.tipo);
 						//Decide if coordinate X is within selection
 					if (move.x > 0){
 						if (cx < sw+sx && cx > sx){
@@ -684,8 +719,12 @@ function init(){
 						var filter = tipomap[tipo].filter;					
 						d.properties.select = true;	
 						tipomap[tipo].selecao.push(d);
+						var m = parseInt(d.properties.data.substring(3,5));
+		    			if (filterMonth[m-3] == 0){
+		    				return "rgba(0,0,0,0.05)";	
+		    			}
 						if (check && filter){
-							return color(tipo);
+							return color(d.properties.tipo);
 						} else if  (!filter){
 							return "rgba(0,0,0,0.05)" 
 						} else if (!check && filter){
@@ -694,10 +733,14 @@ function init(){
 												
 					} else {
 						d.properties.select = false;
+						var m = parseInt(d.properties.data.substring(3,5));
+		    			if (filterMonth[m-3] == 0){
+		    				return "rgba(0,0,0,0.05)";	
+		    			}
 						if (!tipomap[tipo].filter){	
 							return "rgba(0,0,0,0.05)"
 						} else {
-							return "rgba(0,0,255,0.5)"
+							return "rgba(0,150,255,0.5)"
 						}
 					}
 			});
@@ -708,9 +751,7 @@ function init(){
 			svg.select(".selection").remove();
 			selecting = 0;
 		}
-		var scale = d3.scaleLinear()
-    		.domain([0, 120])   // Data space
-	    	.range([0, 200]); // Pixel space
+
 		var pos=0;
 		svg2.selectAll("rect").remove();
 	    if (selected == 0){
@@ -725,32 +766,42 @@ function init(){
 		          })
 		          .attr("y", 0)
 		          .attr("width",  40)
-		          .attr("height", function(d){
-		          	return tipomap[d].pontos.length;
+		           .attr("height", function(d){
+		           	var target =color(d);
+		           	if (tipomap[target].pontos.length > 200){
+		          		return bigscale(tipomap[color(d)].pontos.length);
+		          	}
+		          	return scalerect(tipomap[color(d)].pontos.length);
 		      	   })
 		        .attr("fill",function(d){
 		          	if (check){
-		          		return tipomap[d].color
+		          		return color(d)
 		          	}else {
-		          		return "rgba(0,0,0,0.05)"
+		          		return "rgba(0,0,0,0.1)"
 		          	}
 				})
 				.on("click", function(d){
-		          	
-		          	if (tipomap[d].filter){ 
-		          		tipomap[d].filter = false;
+		          	var target =color(d);
+		          	if (tipomap[target].filter){ 
+		          		tipomap[target].filter = false;
 		          	} else {
-		          		tipomap[d].filter = true;
+		          		tipomap[target].filter = true;
 		          	}
 		          	var c = d3.select("svg").selectAll("circle");
 		    		c.attr("fill", function(d){  
-		    			tipo = d.properties.tipo;
+		    			tipo = color(d.properties.tipo);
+		    			var m = parseInt(d.properties.data.substring(3,5));
+		    			if (filterMonth[m-3] == 0){
+		    				return "rgba(0,0,0,0.05)";	
+		    			}
 		    			if (tipomap[tipo].filter){		
 		    				
-		    				if  (d.properties.select==true){		
-								return color(tipo);
+		    				if  (d.properties.select==true &&check){		
+								return color(d.properties.tipo);
+							}else if (d.properties.select==true &&check){
+								return "rgba(255,0,0,0.5)";
 							} else {
-								return "rgba(0,0,255,0.5)";
+								return "rgba(0,150,255,0.5)";
 							}	
 						
 						} else {
@@ -760,7 +811,7 @@ function init(){
 		          	renderDataset();
 		        });
 
-			pos = 0;
+			pos = 2;
 		    svg2.selectAll("text").remove();
 			var s = svg2.selectAll("text").data(tipos);
 			s.enter()
@@ -770,10 +821,17 @@ function init(){
 		          	return pos;
 		          })
 		          .attr("y", function(d){
-		          	return tipomap[d].pontos.length;
+		          	if (tipomap[color(d)].selecao.length > 200){	
+		          		return bigscale(tipomap[color(d)].selecao.length)+15;
+		          	}
+		          	return scalerect(tipomap[color(d)].selecao.length);
 		      	   })
 		          .text(function(d){
-		          	return tipomap[d].pontos.length;
+		          	if (selected == 0){
+		          		return tipomap[color(d)].pontos.length;
+		          	} else{
+		          		return tipomap[color(d)].selecao.length;
+		      	   	}
 		      	   });
 
 	    } else {	
@@ -788,32 +846,41 @@ function init(){
 		          })
 		          .attr("y", 0)
 		          .attr("width",  40)
-		          .attr("height", function(d){
-		          	return tipomap[d].selecao.length;
+		           .attr("height", function(d){
+		           	if (tipomap[color(d)].selecao.length > 200){
+		           		return bigscale(tipomap[color(d)].selecao.length);
+		          	}
+		          	return scalerect(tipomap[color(d)].selecao.length);
 		      	   })
 		          .attr("fill",function(d){
 		          	if (check){
-		          		return tipomap[d].color
+		          		return color(d);
 		          	}else {
-		          		return "rgba(0,0,0,0.05)"
+		          		return "rgba(0,0,0,0.1)"
 		          	}
 				})
 		          .on("click", function(d){
-		          	
-		          	if (tipomap[d].filter){ 
-		          		tipomap[d].filter = false;
+		          	var target = color(d);
+		          	if (tipomap[target].filter){ 
+		          		tipomap[target].filter = false;
 		          	} else {
-		          		tipomap[d].filter = true;
+		          		tipomap[target].filter = true;
 		          	}
 		          	var c = d3.select("svg").selectAll("circle");
 		    		c.attr("fill", function(d){  
-		    			tipo = d.properties.tipo;
+		    			tipo = color(d.properties.tipo);
+		    			var m = parseInt(d.properties.data.substring(3,5));
+		    			if (filterMonth[m-3] == 0){
+		    				return "rgba(0,0,0,0.05)";	
+		    			}
 		    			if (tipomap[tipo].filter){		
 		    				
-		    				if  (d.properties.select == true){		
-								return color(tipo);
+		    				if  (d.properties.select==true &&check){		
+								return color(d.properties.tipo);
+							}else if (d.properties.select==true && !check){
+								return "rgba(255,0,0,0.5)";
 							} else {
-								return "rgba(0,0,255,0.5)";
+								return "rgba(0,150,255,0.5)";
 							}	
 						
 						} else {
@@ -822,7 +889,7 @@ function init(){
 		    		});
 		          	renderDataset();
 		        });;
-			pos = 0;
+			pos = 2;
 		    svg2.selectAll("text").remove();
 			var t = svg2.selectAll("text").data(tipos);
 			t.enter()
@@ -832,18 +899,21 @@ function init(){
 		          	return pos;
 		          })
 		          .attr("y", function(d){
-		          	return tipomap[d].selecao.length+15;
+		          	if (tipomap[color(d)].selecao.length > 200){
+		          		return bigscale(tipomap[color(d)].selecao.length)+15;
+		          	} else {
+		          		return scalerect(tipomap[color(d)].selecao.length)+15;
+		      	   	}
 		      	   })
 		          .text(function(d){
-		          	return tipomap[d].selecao.length;
+		          	if (selected == 0){
+		          		return tipomap[color(d)].pontos.length;
+		          	} else{
+		          		return tipomap[color(d)].selecao.length;
+		      	   	}
 		      	   });
 		}
-		console.log("Automóveis e outros :"+tipomap["Automóveis e outros"].selecao.length);
-		console.log("Ciclistas :"+tipomap["Ciclistas"].selecao.length);
-		console.log("Ciclomotores :"+tipomap["Ciclomotores"].selecao.length);
-	    console.log("Motocicletas :"+tipomap["Motocicletas"].selecao.length);
-		console.log("Pedestres :"+tipomap["Pedestres"].selecao.length);
-		
+
 	    state = "idle";
 	    renderDataset();
 	})
